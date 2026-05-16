@@ -21,6 +21,7 @@ sae-defense-pipeline/
   data/
     sample_prompts.jsonl
   scripts/
+    generate_experiment_dataset.py
     inspect_modules.py
     collect_activations.py
     train_sae.py
@@ -80,7 +81,23 @@ pip install -r requirements.txt
 
 `hook.module_path`는 실제 Gemma 구조에 맞는 모듈 경로여야 한다. 예를 들어 `model.layers.20` 같은 형태다.
 
-### 3. Collect Activations
+### 3. Generate Experimental Dataset
+
+약 2000개 규모의 1차 실험셋을 만들려면 아래를 먼저 실행한다.
+
+```bash
+python scripts/generate_experiment_dataset.py
+```
+
+기본 출력은 `data/experiment_v1_2000.jsonl` 이고, 현재 config는 이 파일을 읽도록 되어 있다.
+
+분포는 기본적으로 아래와 같다.
+
+- `benign`: 800
+- `policy_sensitive`: 400
+- `jailbreak`: 800
+
+### 4. Collect Activations
 
 먼저 실제 hook 위치를 찾기 위해 모듈 경로를 확인하는 것을 권장한다.
 
@@ -110,19 +127,19 @@ python scripts/inspect_modules.py --config configs/gemma3_12b_it_a100.yaml --fil
 python scripts/collect_activations.py --config configs/gemma3_12b_it_a100.yaml
 ```
 
-### 4. Train SAE
+### 5. Train SAE
 
 ```bash
 python scripts/train_sae.py --config configs/gemma3_12b_it_a100.yaml
 ```
 
-### 5. Score Features
+### 6. Score Features
 
 ```bash
 python scripts/score_features.py --config configs/gemma3_12b_it_a100.yaml
 ```
 
-### 6. Select Features
+### 7. Select Features
 
 기본적으로는 `feature_scores.json`에서 자동으로 후보를 추린다.
 
@@ -142,7 +159,7 @@ python scripts/select_features.py \
   --max-benign-mean 0.02
 ```
 
-### 7. Build Steering Artifact
+### 8. Build Steering Artifact
 
 그 다음 artifact를 생성한다.
 

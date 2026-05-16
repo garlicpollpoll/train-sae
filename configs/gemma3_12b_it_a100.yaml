@@ -10,7 +10,7 @@ model:
   max_length: 2048
 
 data:
-  dataset_jsonl: data/sample_prompts.jsonl
+  dataset_jsonl: data/experiment_v1_2000.jsonl
   text_field: prompt
   id_field: id
   category_field: category
