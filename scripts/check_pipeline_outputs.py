@@ -24,9 +24,10 @@ def main() -> None:
     scores_path = output_dir / "feature_scores.json"
     selected_path = output_dir / "selected_features.json"
     artifact_path = output_dir / "artifacts" / "sae_delta_artifact.pt"
+    full_artifact_path = output_dir / "artifacts" / "sae_full_artifact.pt"
 
     print("=== File Check ===")
-    for path in [activations_path, checkpoint_path, scores_path, selected_path, artifact_path]:
+    for path in [activations_path, checkpoint_path, scores_path, selected_path, artifact_path, full_artifact_path]:
         print(f"{path}: {'OK' if path.exists() else 'MISSING'}")
 
     if not activations_path.exists() or not checkpoint_path.exists() or not artifact_path.exists():
@@ -36,6 +37,7 @@ def main() -> None:
     activations = torch.load(activations_path, map_location="cpu")
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     artifact = torch.load(artifact_path, map_location="cpu")
+    full_artifact = torch.load(full_artifact_path, map_location="cpu") if full_artifact_path.exists() else None
 
     act_tensor = activations["activations"]
     hidden_size = int(activations["hidden_size"])
@@ -53,6 +55,10 @@ def main() -> None:
     print(f"sae_k: {k}")
     print(f"delta_dense.shape: {tuple(delta_dense.shape)}")
     print(f"effective_delta_latent.shape: {tuple(effective_delta_latent.shape)}")
+    if full_artifact is not None:
+        print(f"full.encoder_weight.shape: {tuple(full_artifact['encoder_weight'].shape)}")
+        print(f"full.decoder_weight.shape: {tuple(full_artifact['decoder_weight'].shape)}")
+        print(f"full.input_bias.shape: {tuple(full_artifact['input_bias'].shape)}")
 
     print("\n=== Value Check ===")
     print(f"delta_dense has nan: {bool(torch.isnan(delta_dense).any().item())}")
@@ -66,6 +72,8 @@ def main() -> None:
     print(f"alpha_default: {artifact.get('alpha_default')}")
     print(f"gamma: {artifact.get('gamma')}")
     print(f"checksum exists: {'checksum' in artifact}")
+    if full_artifact is not None:
+        print(f"full artifact checksum exists: {'checksum' in full_artifact}")
 
     print("\n=== Simple Verdict ===")
     ok = True
@@ -87,6 +95,19 @@ def main() -> None:
     if torch.isnan(effective_delta_latent).any() or torch.isinf(effective_delta_latent).any():
         print("- effective_delta_latent contains nan/inf")
         ok = False
+    if full_artifact is not None:
+        if full_artifact["encoder_weight"].shape != (width, hidden_size):
+            print("- full artifact encoder_weight shape does not match [width, hidden_size]")
+            ok = False
+        if full_artifact["decoder_weight"].shape != (hidden_size, width):
+            print("- full artifact decoder_weight shape does not match [hidden_size, width]")
+            ok = False
+        if full_artifact["input_bias"].shape != (hidden_size,):
+            print("- full artifact input_bias shape does not match [hidden_size]")
+            ok = False
+        if int(full_artifact["k"]) != k:
+            print("- full artifact k does not match checkpoint k")
+            ok = False
 
     if ok:
         print("PASS: pipeline outputs are structurally valid.")

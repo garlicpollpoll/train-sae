@@ -169,6 +169,16 @@ python scripts/build_artifact.py \
   --selected outputs/selected_features.json
 ```
 
+### 9. Build Full SAE Artifact
+
+vLLM 등에서 online SAE encode/decode를 하려면 dense steering artifact와 별도로 SAE weight가 포함된 full artifact를 만든다.
+
+```bash
+python scripts/build_full_artifact.py \
+  --config configs/gemma3_12b_it_a100.yaml \
+  --selected outputs/selected_features.json
+```
+
 ## Output Contracts
 
 ### Activation Cache
@@ -209,6 +219,22 @@ python scripts/build_artifact.py \
 
 - `delta_dense`
 - `effective_delta_latent`
+- `target_layer`
+- `activation_site`
+- metadata
+
+### Full SAE Artifact
+
+`outputs/artifacts/sae_full_artifact.pt`
+
+- `encoder_weight`
+- `encoder_bias`
+- `decoder_weight`
+- `input_bias`
+- `effective_delta_latent`
+- `selected_features`
+- `selection_policy`
+- `k`
 - `target_layer`
 - `activation_site`
 - metadata

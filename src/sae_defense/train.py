@@ -299,6 +299,54 @@ def build_artifact(cfg: dict[str, Any], selected_path: str) -> None:
     save_artifact(output_dir / "artifacts" / "sae_delta_artifact.pt", payload)
 
 
+@torch.no_grad()
+def build_full_artifact(cfg: dict[str, Any], selected_path: str) -> None:
+    output_dir = Path(cfg["output_dir"])
+    checkpoint = torch.load(output_dir / "checkpoints" / "sae_last.pt", map_location="cpu")
+    with Path(selected_path).open("r", encoding="utf-8") as handle:
+        selected_payload = json.load(handle)
+
+    selected = selected_payload["features"]
+    width = int(checkpoint["width"])
+    hidden_size = int(checkpoint["hidden_size"])
+    model = TopKSAE(
+        input_dim=hidden_size,
+        width=width,
+        k=int(checkpoint["k"]),
+    )
+    model.load_state_dict(checkpoint["state_dict"])
+    model.eval()
+
+    effective_delta_latent = build_effective_delta(width=width, selected=selected)
+    artifact_cfg = cfg["artifact"]
+    payload = {
+        "encoder_weight": model.encoder.weight.detach().float().contiguous(),
+        "encoder_bias": model.encoder.bias.detach().float().contiguous(),
+        "decoder_weight": model.decoder.weight.detach().float().contiguous(),
+        "input_bias": model.input_bias.detach().float().contiguous(),
+        "effective_delta_latent": effective_delta_latent.contiguous(),
+        "selected_features": selected,
+        "selection_policy": selected_payload.get("selection_policy"),
+        "num_selected": int(selected_payload.get("num_selected", len(selected))),
+        "sae_width": width,
+        "hidden_size": hidden_size,
+        "k": int(checkpoint["k"]),
+        "target_layer": int(cfg["hook"]["target_layer"]),
+        "activation_site": cfg["hook"]["activation_site"],
+        "alpha_default": float(artifact_cfg["alpha_default"]),
+        "gamma": float(artifact_cfg["gamma"]),
+        "application_direction": artifact_cfg["application_direction"],
+        "model_id": artifact_cfg["model_id"],
+        "sae_id": artifact_cfg["sae_id"],
+        "artifact_version": artifact_cfg["artifact_version"],
+        "tp_size": int(artifact_cfg["tp_size"]),
+        "tp_rank": int(artifact_cfg["tp_rank"]),
+        "decoder_weight_layout": "hidden_by_feature",
+    }
+    payload["checksum"] = payload_checksum(payload)
+    save_artifact(output_dir / "artifacts" / "sae_full_artifact.pt", payload)
+
+
 def select_features(
     cfg: dict[str, Any],
     *,
@@ -349,6 +397,14 @@ def main_build_artifact() -> None:
         raise ValueError("--selected is required for artifact build")
     cfg = load_config(args.config)
     build_artifact(cfg, args.selected)
+
+
+def main_build_full_artifact() -> None:
+    args = parse_args()
+    if args.selected is None:
+        raise ValueError("--selected is required for full artifact build")
+    cfg = load_config(args.config)
+    build_full_artifact(cfg, args.selected)
 
 
 def main_inspect_modules() -> None:
