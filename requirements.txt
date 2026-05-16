@@ -1,0 +1,5 @@
+pyyaml>=6.0
+torch>=2.3
+transformers>=4.51
+tqdm>=4.66
+safetensors>=0.4

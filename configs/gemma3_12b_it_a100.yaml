@@ -1,0 +1,55 @@
+seed: 42
+output_dir: outputs
+device: cuda
+dtype: bfloat16
+
+model:
+  model_name_or_path: /home/ubuntu/model/gemma-3-12b-it
+  trust_remote_code: true
+  attn_implementation: eager
+  max_length: 2048
+
+data:
+  dataset_jsonl: data/sample_prompts.jsonl
+  text_field: prompt
+  id_field: id
+  category_field: category
+  batch_size: 2
+  max_samples: null
+  truncate_to: 1024
+
+hook:
+  module_path: model.language_model.layers.24
+  capture: output
+  activation_site: residual_stream
+  target_layer: 24
+
+sae:
+  width: 131072
+  k: 64
+  learning_rate: 0.0003
+  batch_size_tokens: 4096
+  epochs: 3
+  reconstruction_weight: 1.0
+  l1_weight: 0.0
+  normalize_decoder: true
+  log_every: 20
+
+artifact:
+  model_id: gemma-3-12b-it
+  sae_id: gemma3-12b-it-jailbreak-defense-v1
+  artifact_version: 0.1.0
+  alpha_default: 2.0
+  gamma: 0.85
+  application_direction: positive
+  tp_size: 1
+  tp_rank: 0
+  delta_dense_layout: replicated
+
+selection:
+  top_k: 32
+  min_gap: 0.0
+  max_benign_mean: null
+  positive_only: true
+  weight_mode: gap
+  normalize_weights: true
